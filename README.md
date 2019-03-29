@@ -1,3 +1,7 @@
+原作者将bert中神经网络倒数第二层取出做池化生成句向量以供下游任务使用，但尝试后发现该句向量取余弦距离作为相似度效果不佳，因此将bert-as-service中模型部分还原为bert中run_classifier.py中的样子。
+具体而言只是对server中graph.py做了修改，且输出维数显式设为了2.
+以下为原作者的说明文档(以后有时间再整理一下吧)
+
 <h1 align="center">bert-as-service</h1>
 
 <p align="center">Using BERT model as a sentence encoding service, i.e. mapping a variable-length sentence to a fixed-length vector.</p>
@@ -42,7 +46,7 @@
   <a href="#speech_balloon-faq">FAQ</a> •
   <a href="#zap-benchmark">Benchmark</a> •
   <a href="https://hanxiao.github.io/2019/01/02/Serving-Google-BERT-in-Production-using-Tensorflow-and-ZeroMQ/" target="_blank">Blog</a>
-  
+
 </p>
 
 <p align="center">
@@ -196,7 +200,7 @@ bert-serving-benchmark --help
 | `tuned_model_dir`| str |(Optional)| folder path of a fine-tuned BERT model. |
 | `ckpt_name`| str | `bert_model.ckpt` | filename of the checkpoint file. |
 | `config_name`| str | `bert_config.json` | filename of the JSON config file for BERT model. |
-| `graph_tmp_dir` | str | None | path to graph temp file |  
+| `graph_tmp_dir` | str | None | path to graph temp file |
 | `max_seq_len` | int | `25` | maximum length of sequence, longer sequence will be trimmed on the right side. Set it to NONE for dynamically using the longest sequence in a (mini)batch. |
 | `mask_cls_sep` | bool | False | masking the embedding on [CLS] and [SEP] with zero. |
 | `num_worker` | int | `1` | number of (GPU/CPU) worker runs BERT model, each works in a separate process. |
@@ -213,7 +217,7 @@ bert-serving-benchmark --help
 | `xla` | bool | False | enable [XLA compiler](https://www.tensorflow.org/xla/jit) for graph optimization (*experimental!*) |
 | `fp16` | bool | False | use float16 precision (experimental) |
 | `device_map` | list | `[]` | specify the list of GPU device ids that will be used (id starts from 0)|
-| `show_tokens_to_client` | bool | False | sending tokenization results to client | 
+| `show_tokens_to_client` | bool | False | sending tokenization results to client |
 
 ### Client API
 
@@ -285,7 +289,7 @@ This gives `33 questions loaded, avg. len of 9`. So looks like we have enough qu
 ```bash
 bert-serving-start -num_worker=1 -model_dir=/data/cips/data/lab/data/model/uncased_L-12_H-768_A-12
 ```
- 
+
 Next, we need to encode our questions into vectors:
 ```python
 bc = BertClient(port=4000, port_out=4001)
@@ -394,10 +398,10 @@ This gives `[2, 25, 768]` tensor where the first `[1, 25, 768]` corresponds to t
 Note that there is no need to start a separate server for handling tokenized/untokenized sentences. The server can tell and handle both cases automatically.
 
 Sometimes you want to know explicitly the tokenization performed on the server side to have better understanding of the embedding result. One such case is asking word embedding from the server (with `-pooling_strategy NONE`), one wants to tell which word is tokenized and which is unrecognized. You can get such information with the following steps:
- 
+
  1. enabling `-show_tokens_to_client` on the server side;
  2. calling the server via `encode(..., show_tokens=True)`.
- 
+
 For example, a basic usage like
 
 ```python
@@ -693,7 +697,7 @@ args = get_args_parser().parse_args(['-model_dir', 'YOUR_MODEL_PATH_HERE',
                                      '-cpu'])
 server = BertServer(args)
 server.start()
-``` 
+```
 
 Note that it's basically mirroring the arg-parsing behavior in CLI, so everything in that `.parse_args([])` list should be string, e.g. `['-port', '5555']` not `['-port', 5555]`.
 
@@ -830,7 +834,7 @@ One port is for pushing text data into the server, the other port is for publish
 ##### **Q:** Can I use my own fine-tuned BERT model?
 
 **A:** Yes. In fact, this is suggested. Make sure you have the following three items in `model_dir`:
-                             
+​                             
 - A TensorFlow checkpoint (`bert_model.ckpt`) containing the pre-trained weights (which is actually 3 files).
 - A vocab file (`vocab.txt`) to map WordPiece to word id.
 - A config file (`bert_config.json`) which specifies the hyperparameters of the model.
